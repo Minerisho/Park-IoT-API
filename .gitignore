@@ -1,0 +1,64 @@
+# ── Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.egg
+*.egg-info/
+.eggs/
+
+# ── Entornos/gestores
+.venv/
+venv/
+ENV/
+.env
+.env.*
+.python-version
+pip-wheel-metadata/
+
+# ── IDE/OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ── Tests / coverage / caches
+.pytest_cache/
+.coverage
+coverage.*
+htmlcov/
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+.cache/
+
+# ── Build / dist / docs
+build/
+dist/
+site/
+docs/_build/
+
+# ── Logs
+*.log
+logs/
+
+# ── Base de datos local / artefactos
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Archivos generados por la app (capturas, uploads, etc.)
+data/
+!data/.gitkeep
+storage/
+!storage/.gitkeep
+uploads/
+!uploads/.gitkeep
+
+# ── Alembic (mantén migraciones, ignora bytecode)
+alembic/versions/__pycache__/
+
+# ── Notebooks
+.ipynb_checkpoints/
