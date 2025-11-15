@@ -4,10 +4,10 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from .config import get_settings
 from .models import (
-    Parqueadero, Zona, Palanca, Sensor, Camara,
+    Parqueadero, Zona, Palanca, Sensor,
     Vehiculo, VehiculoVIP, Visita,
-    LecturaPlaca, EventoParqueadero, EventoZona,
-    Dispositivo, Comando, Incidente
+    LecturaPlaca,
+    Incidente
     )# noqa
 
 settings = get_settings()

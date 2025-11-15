@@ -2,13 +2,11 @@
 from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field
-from ..core.enums import IncidentType
 
 class Incidente(SQLModel, table=True):
     __tablename__ = "incidentes"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    tipo: IncidentType
+    id: int = Field(default=None, primary_key=True)
 
     visita_id: Optional[int] = Field(default=None, foreign_key="visitas.id", index=True)
     placa_detectada: Optional[str] = Field(default=None, max_length=12)

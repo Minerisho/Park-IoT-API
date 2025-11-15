@@ -1,0 +1,40 @@
+{
+    "parqueadero_nombre_1":{
+        "id_parqueadero":1,
+        "palanca_entrada":{
+            "id":2,
+            "sensor_id":5
+        },
+        "palanca_salida":{
+            "id":7,
+            "sensor_id":9
+        },
+        "zonas":{
+            "zona_nombre_1":{
+                "es_vip":true,
+                "capacidad":20,
+                "palanca":{
+                    "id":62,
+                    "sensor_id":42
+                }
+            },
+            "zona_nombre_2":{
+                "es_vip":false,
+                "capacidad":15,
+                "palanca":{
+                    "id":31,
+                    "sensor_id":14
+                }
+            },
+            "zona_nombre_3":{
+                "es_vip":false,
+                "capacidad":15,
+                "palanca":{
+                    "id":30,
+                    "sensor_id":10
+                }
+            }              
+                     
+        }
+    }
+}

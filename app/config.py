@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     debug: bool = True
     db_url: str = "sqlite:///./app.db"
     cors_origins: list[str] = ["*"]   # Lista de orígenes permitidos
-    api_key_salt: str = "change-me"   # la key de la api
+    api_key_salt: str = "llave_super_secreta"   # la key de la api
 
     @field_validator("cors_origins", mode="before")
     @classmethod

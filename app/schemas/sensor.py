@@ -1,37 +1,37 @@
-# app/schemas/sensor.py
 from typing import Optional
-from pydantic import BaseModel, Field
-from ..core.enums import SensorType, EventType
+from pydantic import BaseModel, field_validator
+from ..core.enums import SensorType
 
-class SensorBase(BaseModel):
+class SensorCreate(BaseModel):
     tipo: SensorType
-    nombre: Optional[str] = None
+    nombre: str
     activo: bool = True
-
-class SensorCreate(SensorBase):
     zona_id: Optional[int] = None
     palanca_id: Optional[int] = None
 
-class SensorRead(SensorBase):
-    id: int
-    zona_id: Optional[int] = None
-    palanca_id: Optional[int] = None
+    @field_validator("palanca_id")
+    @classmethod
+    def _al_menos_un_anclaje(cls, v, info):
+        data = info.data
+        if v is None and data.get("zona_id") is None:
+            raise ValueError("Debes indicar al menos 'zona_id' o 'palanca_id'.")
+        return v
 
-class SensorPatch(BaseModel):
+class SensorUpdate(BaseModel):
     nombre: Optional[str] = None
     activo: Optional[bool] = None
-    # Si NO quieres permitir mover el dueño por PATCH, no incluyas zona_id/palanca_id aquí.
+    zona_id: Optional[int] = None
+    palanca_id: Optional[int] = None
+    # Nota: aquí permitimos dejar ambos en None (desanclar),
+    # si no quieres permitirlo, valida igual que en Create.
 
-class SensorTrigger(BaseModel):
-    evento: EventType = Field(description="ENTRADA o SALIDA")
+class SensorRead(BaseModel):
+    id: int
+    tipo: SensorType
+    nombre: str
+    activo: bool
+    zona_id: Optional[int]
+    palanca_id: Optional[int]
 
-class TriggerBody(BaseModel):
-    evento: EventType
-    nota: Optional[str] = None
-
-class ConteoZona(BaseModel):
-    zona_id: int = Field(ge=1)
-    evento: EventType
-    conteo_actual: int = Field(ge=0)
-    capacidad: int = Field(ge=0)
-
+    class Config:
+        from_attributes = True

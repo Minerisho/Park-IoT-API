@@ -2,7 +2,7 @@
 from fastapi import FastAPI, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings, Settings
-from .routers import parqueadero, zonas, palancas, sensores, eventos_zona, eventos_parqueadero, visitas
+from .routers import parqueadero, zonas, palancas, sensores, visitas, black_list, camaras
 from .db import create_db_and_tables
 from contextlib import asynccontextmanager
 
@@ -45,9 +45,9 @@ def create_app() -> FastAPI:
     app.include_router(zonas.router)
     app.include_router(palancas.router)
     app.include_router(sensores.router)
-    app.include_router(eventos_zona.router)
-    app.include_router(eventos_parqueadero.router)
     app.include_router(visitas.router)
+    app.include_router(black_list.router)
+    app.include_router(camaras.router)
     return app
 
 

@@ -1,18 +1,28 @@
-import requests
-import string
+# tools/smoke_runner.py
+# Uso:
+#   py tools/smoke_runner.py
+#
+# Requisitos:
+#   - Uvicorn corriendo: uvicorn app.main:app --reload
+#   - requests instalado (pip install requests)
+
+import json
 import random
+import string
+import sys
+from typing import Any, Dict, Optional
 
-BASE = "http://127.0.0.1:8000"
+import requests
 
-def rstr(n=6):
-    return "".join(random.choices(string.hexdigits.lower(), k=n))
 
-def call(method, path, **kwargs):
-    url = f"{BASE}{path}"
+BASE_URL = "http://127.0.0.1:8000"
+
+
+def call(method: str, path: str, **kwargs) -> requests.Response:
+    url = f"{BASE_URL}{path}"
     resp = requests.request(method, url, **kwargs)
-    ok = 200 <= resp.status_code < 300
-    print(f"{method.upper():4} {path} -> {resp.status_code}")
-    if not ok:
+    print(f"{method:4} {path} -> {resp.status_code}")
+    if resp.status_code >= 400:
         try:
             print("Body:", resp.text)
         except Exception:
@@ -20,138 +30,178 @@ def call(method, path, **kwargs):
         resp.raise_for_status()
     return resp
 
-def main():
-    tag = rstr()
 
-    # 1) Health
+def rand_suffix(n: int = 6) -> str:
+    return "".join(random.choices(string.hexdigits.lower(), k=n))
+
+
+def main():
+    print("== Smoke Topología + Cámaras ==")
+    print()
+
+    # 0) Health
     call("GET", "/health")
 
-    # 2) Crear parqueadero
-    rp = call("POST", "/parqueaderos", json={
-        "nombre": f"Parqueadero Central {tag}",
-        "direccion": "Cra 1 # 2-34"
-    })
+    # 1) Crear parqueadero
+    suf = rand_suffix()
+    nombre_parq = f"Parqueadero Central {suf}"
+    rp = call(
+        "POST",
+        "/parqueaderos",
+        json={"nombre": nombre_parq, "direccion": "Cra 1 # 2-34"},
+    )
     parqueadero = rp.json()
-    print("Parqueadero:", parqueadero)
     p_id = parqueadero["id"]
+    print("Parqueadero:", parqueadero)
 
-    # 3) Zonas (VIP y B)
-    rvip = call("POST", "/zonas", json={
-        "parqueadero_id": p_id,
-        "nombre": "VIP",
-        "es_vip": True,
-        "capacidad": 5,
-        "orden": 0
-    })
-    zona_vip = rvip.json()
-    print("Zona VIP:", zona_vip)
+    # 2) Crear zonas (VIP y B)
+    rz1 = call(
+        "POST",
+        "/zonas",
+        json={
+            "parqueadero_id": p_id,
+            "nombre": "VIP",
+            "es_vip": True,
+            "capacidad": 5,
+            # conteo_actual arranca en 0 (por defecto del modelo)
+        },
+    ).json()
+    print("Zona VIP:", rz1)
 
-    rzb = call("POST", "/zonas", json={
-        "parqueadero_id": p_id,
-        "nombre": "B",
-        "es_vip": False,
-        "capacidad": 2,
-        "orden": 2
-    })
-    zona_b = rzb.json()
-    print("Zona B:", zona_b)
-    z_b_id = zona_b["id"]
+    rz2 = call(
+        "POST",
+        "/zonas",
+        json={
+            "parqueadero_id": p_id,
+            "nombre": "B",
+            "es_vip": False,
+            "capacidad": 2,
+        },
+    ).json()
+    print("Zona B:", rz2)
 
-    # 4) Palancas (entrada/salida parqueadero + entrada ZB)
-    rpg_in = call("POST", "/palancas", json={"parqueadero_id": p_id, "tipo": "ENTRADA_PARQUEADERO"})
-    rpg_out = call("POST", "/palancas", json={"parqueadero_id": p_id, "tipo": "SALIDA_PARQUEADERO"})
-    rzg_in = call("POST", "/palancas", json={"zona_id": z_b_id, "tipo": "ENTRADA_ZONA"})
-    print("Palanca entrada parqueadero:", rpg_in.json())
-    print("Palanca salida parqueadero:", rpg_out.json())
-    print("Palanca entrada zona B:", rzg_in.json())
+    z_id_b = rz2["id"]
 
-    # 5) Sensores de la zona B (IN / OUT)
-    rin = call("POST", "/sensores", json={
-        "tipo": "ENTRADA_ZONA",
-        "nombre": f"IR IN B {tag}",
-        "zona_id": z_b_id
-    })
-    sin = rin.json()
-    print("Sensor IN:", sin)
+    # 3) Palancas: entrada/salida parqueadero + entrada zona B
+    rp_in = call(
+        "POST",
+        "/palancas",
+        json={"tipo": "ENTRADA_PARQUEADERO", "parqueadero_id": p_id},
+    ).json()
+    print("Palanca entrada parqueadero:", rp_in)
 
-    rout = call("POST", "/sensores", json={
-        "tipo": "SALIDA_ZONA",
-        "nombre": f"IR OUT B {tag}",
-        "zona_id": z_b_id
-    })
-    sout = rout.json()
-    print("Sensor OUT:", sout)
+    rp_out = call(
+        "POST",
+        "/palancas",
+        json={"tipo": "SALIDA_PARQUEADERO", "parqueadero_id": p_id},
+    ).json()
+    print("Palanca salida parqueadero:", rp_out)
 
-    sin_id = sin["id"]
-    sout_id = sout["id"]
+    rp_zb_in = call(
+        "POST",
+        "/palancas",
+        json={"tipo": "ENTRADA_ZONA", "zona_id": z_id_b},
+    ).json()
+    print("Palanca entrada zona B:", rp_zb_in)
 
-    # 6) Triggers para dejar B en 2/2 y luego 1/2
-    def trig(sid, ev):
-        return call("POST", f"/sensores/{sid}/trigger", json={"evento": ev})
+    # 4) Sensores asociados a palancas (para que /topologia muestre sensor_id)
+    #    Nota: el tipo depende de tu Enum de SensorType.
+    rs_pin = call(
+        "POST",
+        "/sensores",
+        json={
+            "tipo": "ENTRADA_PARQUEADERO",
+            "nombre": f"IR IN PARK {suf}",
+            "activo": True,
+            "palanca_id": rp_in["id"],
+        },
+    ).json()
+    print("Sensor palanca entrada parqueadero:", rs_pin)
 
-    trig(sin_id, "ENTRADA")  # B: 1/2
-    trig(sin_id, "ENTRADA")  # B: 2/2 (llena)
-    trig(sout_id, "SALIDA")  # B: 1/2 (dejamos un hueco)
+    rs_pout = call(
+        "POST",
+        "/sensores",
+        json={
+            "tipo": "SALIDA_PARQUEADERO",
+            "nombre": f"IR OUT PARK {suf}",
+            "activo": True,
+            "palanca_id": rp_out["id"],
+        },
+    ).json()
+    print("Sensor palanca salida parqueadero:", rs_pout)
 
-    # 7) Accionar palanca de entrada del parqueadero (solo para registrar eventos)
-    pid_in = rpg_in.json()["id"]
-    # abrir / cerrar por "accion"
-    call("POST", f"/palancas/{pid_in}/accion", json={"accion": "ABRIR"})
-    # fijar explícitamente el estado (usa tu schema)
-    call("POST", f"/palancas/{pid_in}/estado", json={"estado": "ABIERTA", "nota": "test abrir"})  # body requerido
+    rs_zb_in = call(
+        "POST",
+        "/sensores",
+        json={
+            "tipo": "ENTRADA_ZONA",
+            "nombre": f"IR IN ZB {suf}",
+            "activo": True,
+            "zona_id": z_id_b,
+            "palanca_id": rp_zb_in["id"],
+        },
+    ).json()
+    print("Sensor palanca entrada zona B:", rs_zb_in)
 
-    call("POST", f"/palancas/{pid_in}/accion", json={"accion": "CERRAR"})
-    call("POST", f"/palancas/{pid_in}/estado", json={"estado": "CERRADA", "nota": "test cerrar"})  # body requerido
+    # 5) Cámaras: crear dos (entrada/salida) y probar captura (placeholder)
+    rc_in = call(
+        "POST",
+        "/camaras",
+        json={
+            "nombre": f"Cam ENTRADA {suf}",
+            "device_index": 0,
+            "ubicacion": "ENTRADA",
+            "activo": True,
+        },
+    ).json()
+    print("Cámara entrada:", rc_in)
 
+    rc_out = call(
+        "POST",
+        "/camaras",
+        json={
+            "nombre": f"Cam SALIDA {suf}",
+            "device_index": 1,
+            "ubicacion": "SALIDA",
+            "activo": True,
+        },
+    ).json()
+    print("Cámara salida:", rc_out)
 
-    # 8) Visita NO-VIP que debe ENTRAR (hay 1/2 en B)
-    placa_demo = f"ABC{random.randint(100,999)}"
-    r_ent1 = call("POST", "/visitas/entrada", json={"placa": placa_demo, "parqueadero_id": p_id})
-    print("Visita entrada OK:", r_ent1.json())
-    # Ahora B vuelve a estar en 2/2
+    # Captura placeholder (simulada con mock_placa)
+    cap1 = call(
+        "GET",
+        f"/camaras/{rc_in['id']}/capturar",
+        params={"mock_placa": "AAA123"},
+    ).json()
+    print("Captura cámara ENTRADA:", cap1)
 
-    # 9) Segundo intento de visita NO-VIP cuando B está llena -> 409 con action=DERIVAR_SALIDA
-    try:
-        call("POST", "/visitas/entrada", json={"placa": f"XYZ{random.randint(100,999)}", "parqueadero_id": p_id})
-        print("Visita extra inesperadamente OK (debería derivar a salida)")
-    except requests.HTTPError as e:
-        if e.response.status_code == 409:
-            data = e.response.json()
-            # Aceptamos tanto string como dict de detail
-            if isinstance(data, dict) and isinstance(data.get("detail"), dict):
-                detail = data["detail"]
-                print("Visita extra correctamente rechazada:", detail)
-                assert detail.get("action") == "DERIVAR_SALIDA", "Se esperaba action=DERIVAR_SALIDA"
-            else:
-                print("Visita extra correctamente rechazada:", data)
-        else:
-            raise
+    cap2 = call(
+        "GET",
+        f"/camaras/{rc_out['id']}/capturar",
+        params={"mock_placa": "BBB987"},
+    ).json()
+    print("Captura cámara SALIDA:", cap2)
 
-    # 10) Resumen
-    print("== Resumen ==")
-    print("GET  /parqueaderos ->", call("GET", "/parqueaderos").status_code)
-    print("GET  /zonas ->", call("GET", "/zonas").status_code)
-    print("GET  /palancas (por parqueadero) ->", call("GET", f"/palancas?parqueadero_id={p_id}").status_code)
-    print("GET  /sensores ->", call("GET", "/sensores").status_code)
+    # 6) Ajustar conteo_actual de la zona B (PATCH simple) para ver reflejo en /topologia
+    patch_zb = call(
+        "PATCH",
+        f"/zonas/{z_id_b}",
+        json={"conteo_actual": 1},
+    ).json()
+    print("Zona B tras PATCH conteo_actual=1:", patch_zb)
 
-    # Eventos zona B
-    rev_all = call("GET", f"/eventos-zona?zona_id={z_b_id}&limit=10")
-    print("Eventos ZB (todos):", rev_all.json())
-
-    # Eventos palanca entrada
-    rep = call("GET", f"/eventos-parqueadero?palanca_id={pid_in}&limit=5")
-    print("Eventos palanca entrada (recientes):", rep.json())
-    assert len(rep.json()) >= 2, "Faltan eventos de palanca"
-    
-    if rep.json():
-        peid = rep.json()[0]["id"]
-        red = call("GET", f"/eventos-parqueadero/{peid}")
-        print("Detalle evento palanca:", red.json())
-
-
-
+    # 7) Topología
+    topo = call("GET", "/topologia").json()
+    print("== /topologia ==")
+    print(json.dumps(topo, indent=2, ensure_ascii=False))
 
     print("Smoke OK ✅")
 
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except requests.HTTPError as e:
+        # Propaga código de error como código de salida del script
+        sys.exit(1)

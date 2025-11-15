@@ -1,15 +1,18 @@
-# app/models/camara.py
-#from __future__ import annotations
-from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
-
-if TYPE_CHECKING:
-    from .palanca import Palanca
+from typing import Optional
+from sqlmodel import SQLModel, Field
 
 
 class Camara(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    palanca_id: int = Field(foreign_key="palanca.id", index=True)
-    rtsp_url: str = Field(min_length=3, max_length=200)
+    __tablename__ = "camaras"  
 
-    palanca: "Palanca" = Relationship()
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nombre: str = Field(index=True, min_length=1, max_length=100)
+
+    
+    device_index: Optional[int] = Field(
+        default=None, description="Índice de dispositivo (ej. 0 o 1 en OpenCV)"
+    )
+    ubicacion: Optional[str] = Field(
+        default=None, description="Etiqueta libre, p.ej. 'ENTRADA' o 'SALIDA'"
+    )
+    activo: bool = Field(default=True)
