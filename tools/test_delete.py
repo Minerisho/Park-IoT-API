@@ -46,15 +46,46 @@ def run_delete_tests(base_url: str, keep_cache: bool = False) -> None:
     _expect_status(session.delete(_build_url(base_url, f"/visitas/{visita_id}")), 204)
     print("✓ Visita eliminada")
 
-    palanca_id = cache["palanca"]["id"]
-    print(f"Eliminando palanca {palanca_id}…")
-    _expect_status(session.delete(_build_url(base_url, f"/palancas/{palanca_id}")), 200)
-    print("✓ Palanca eliminada")
+    for sensor in cache.get("sensores_parqueadero", {}).values():
+        if not sensor:
+            continue
+        sensor_id = sensor.get("id")
+        if sensor_id is None:
+            continue
+        print(f"Eliminando sensor {sensor_id} del parqueadero…")
+        _expect_status(session.delete(_build_url(base_url, f"/sensores/{sensor_id}")), 200)
+        print("✓ Sensor eliminado")
 
-    zona_id = cache["zona"]["id"]
-    print(f"Eliminando zona {zona_id}…")
-    _expect_status(session.delete(_build_url(base_url, f"/zonas/{zona_id}")), 200)
-    print("✓ Zona eliminada")
+    zonas_cache = cache.get("zonas", [])
+    for zona_entry in zonas_cache:
+        sensor = zona_entry.get("sensor")
+        if sensor and sensor.get("id") is not None:
+            print(f"Eliminando sensor {sensor['id']} de zona…")
+            _expect_status(session.delete(_build_url(base_url, f"/sensores/{sensor['id']}")), 200)
+            print("✓ Sensor de zona eliminado")
+
+    for zona_entry in zonas_cache:
+        palanca = zona_entry.get("palanca")
+        if palanca and palanca.get("id") is not None:
+            print(f"Eliminando palanca de zona {palanca['id']}…")
+            _expect_status(session.delete(_build_url(base_url, f"/palancas/{palanca['id']}")), 200)
+            print("✓ Palanca de zona eliminada")
+
+    for zona_entry in zonas_cache:
+        zona_id = zona_entry["zona"].get("id")
+        print(f"Eliminando zona {zona_id}…")
+        _expect_status(session.delete(_build_url(base_url, f"/zonas/{zona_id}")), 200)
+        print("✓ Zona eliminada")
+
+    for palanca in cache.get("palancas_parqueadero", {}).values():
+        if not palanca:
+            continue
+        palanca_id = palanca.get("id")
+        if palanca_id is None:
+            continue
+        print(f"Eliminando palanca del parqueadero {palanca_id}…")
+        _expect_status(session.delete(_build_url(base_url, f"/palancas/{palanca_id}")), 200)
+        print("✓ Palanca del parqueadero eliminada")
 
     parqueadero_id = cache["parqueadero"]["id"]
     print(f"Eliminando parqueadero {parqueadero_id}…")

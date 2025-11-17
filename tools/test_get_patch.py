@@ -3,6 +3,8 @@
 Lee los IDs almacenados por ``post_functional_tests.py`` y valida que los
 recursos puedan consultarse y actualizarse correctamente, incluyendo los
 nuevos atributos ``en_lista_negra`` y ``vehiculo_vip`` del vehículo.
+También confirma que ``/parqueaderos/topologia`` registre el parqueadero,
+sus tres zonas y todos los sensores asociados sin valores ``null``.
 """
 from __future__ import annotations
 
@@ -105,6 +107,58 @@ def run_get_patch_tests(base_url: str) -> dict[str, Any]:
     )
     print(f"✓ Parqueadero obtenido: {parqueadero['nombre']}")
 
+    print("Consultando topología general…")
+    topologia = _expect_status(
+        session.get(_build_url(base_url, "/parqueaderos/topologia")),
+        200,
+    )
+    parqueadero_topologia = topologia.get(parqueadero["nombre"])
+    if not parqueadero_topologia:
+        raise SystemExit(
+            "Parqueadero {nombre} no aparece en la respuesta de /topologia".format(
+                nombre=parqueadero["nombre"]
+            )
+        )
+    palancas_topologia = {
+        "entrada": parqueadero_topologia.get("palanca_entrada"),
+        "salida": parqueadero_topologia.get("palanca_salida"),
+    }
+    for nombre, info in palancas_topologia.items():
+        if not info or info.get("id") is None or info.get("sensor_id") is None:
+            raise SystemExit(
+                f"La palanca de {nombre} del parqueadero no tiene ID o sensor asociado en /topologia"
+            )
+
+    zonas_topologia = parqueadero_topologia["zonas"]
+    zonas_cache = cache.get("zonas", [])
+    if len(zonas_cache) < 3:
+        raise SystemExit("Se esperaban al menos 3 zonas creadas por el script POST")
+    vip_count = sum(1 for zona in zonas_cache if zona["zona"].get("es_vip"))
+    if vip_count != 1:
+        raise SystemExit("El script POST debe haber creado exactamente una zona VIP")
+
+    for zona_info in zonas_cache:
+        zona_nombre = zona_info["zona"]["nombre"]
+        zona_topologia = zonas_topologia.get(zona_nombre)
+        if not zona_topologia:
+            raise SystemExit(
+                "Zona {nombre} no aparece en la topología del parqueadero {parque}".format(
+                    nombre=zona_nombre, parque=parqueadero["nombre"]
+                )
+            )
+        palanca_info = zona_topologia.get("palanca") or {}
+        if palanca_info.get("id") is None or palanca_info.get("sensor_id") is None:
+            raise SystemExit(
+                f"La zona {zona_nombre} carece de palanca o sensor en /topologia"
+            )
+        if zona_topologia.get("es_vip") != zona_info["zona"].get("es_vip"):
+            raise SystemExit(
+                f"La zona {zona_nombre} no refleja correctamente su bandera VIP en /topologia"
+            )
+    print(
+        f"✓ Topología lista para {len(zonas_cache)} zonas con palancas y sensores asociados"
+    )
+
     print("Listando zonas del parqueadero…")
     zonas = _expect_status(
         session.get(_build_url(base_url, f"/zonas?parqueadero_id={parqueadero_id}")),
@@ -112,7 +166,8 @@ def run_get_patch_tests(base_url: str) -> dict[str, Any]:
     )
     print(f"✓ {len(zonas)} zona(s) encontradas")
 
-    zona_id = cache["zona"]["id"]
+    zona_cache_entry = zonas_cache[0]
+    zona_id = zona_cache_entry["zona"]["id"]
     print(f"Consultando zona {zona_id}…")
     zona = _expect_status(
         session.get(_build_url(base_url, f"/zonas/{zona_id}")),
@@ -134,6 +189,7 @@ def run_get_patch_tests(base_url: str) -> dict[str, Any]:
             nombre=zona_patched["nombre"], capacidad=zona_patched["capacidad"]
         )
     )
+    zona_cache_entry["zona"] = zona_patched
 
     print("Aplicando PATCH sobre parqueadero…")
     parqueadero_patch_body = {
@@ -168,7 +224,6 @@ def run_get_patch_tests(base_url: str) -> dict[str, Any]:
         {
             "base_url": base_url,
             "parqueadero": parqueadero_patched,
-            "zona": zona_patched,
             "vehiculo": vehiculo_patched,
             "visita": visita_patched,
         }

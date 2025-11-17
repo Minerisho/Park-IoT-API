@@ -1,9 +1,9 @@
 from typing import Optional
 from pydantic import BaseModel, field_validator
-from ..core.enums import SensorType
+from ..core.enums import Type
 
 class SensorCreate(BaseModel):
-    tipo: SensorType
+    tipo: Type
     nombre: str
     activo: bool = True
     zona_id: Optional[int] = None
@@ -27,7 +27,7 @@ class SensorUpdate(BaseModel):
 
 class SensorRead(BaseModel):
     id: int
-    tipo: SensorType
+    tipo: Type
     nombre: str
     activo: bool
     zona_id: Optional[int]

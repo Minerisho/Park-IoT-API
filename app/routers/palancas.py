@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlmodel import Session, select
 from ..db import get_session
-from ..core.enums import GateType
+from ..core.enums import Type
 from ..models.palanca import Palanca
 from ..schemas.palanca import PalancaCreate, PalancaRead, PalancaSetEstadoBody
 
@@ -9,12 +9,12 @@ router = APIRouter(prefix="/palancas", tags=["palancas"])
 
 @router.post("", response_model=PalancaRead, status_code=status.HTTP_201_CREATED)
 def crear_palanca(body: PalancaCreate, session: Session = Depends(get_session)):
-    if body.tipo in {GateType.ENTRADA_PARQUEADERO, GateType.SALIDA_PARQUEADERO} and body.parqueadero_id is None:
+    if body.tipo in {Type.ENTRADA_PARQUEADERO, Type.SALIDA_PARQUEADERO} and body.parqueadero_id is None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Las palancas de parqueadero requieren el id del parqueadero",
         )
-    if body.tipo in {GateType.ENTRADA_ZONA, GateType.SALIDA_ZONA} and body.zona_id is None:
+    if body.tipo in {Type.ENTRADA_ZONA, Type.SALIDA_ZONA} and body.zona_id is None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Las palancas de zona requieren el id de la zona",

@@ -7,7 +7,7 @@ from ..db import get_session
 from ..models.sensor import Sensor
 from ..models.zona import Zona
 from ..models.palanca import Palanca
-from ..core.enums import SensorType
+from ..core.enums import Type
 from ..schemas.sensor import SensorCreate, SensorUpdate, SensorRead
 
 router = APIRouter(prefix="/sensores", tags=["sensores"])
@@ -24,19 +24,31 @@ def _assert_fk_exist(session: Session, zona_id: Optional[int], palanca_id: Optio
 # ---------------------------
 # Endpoints
 # ---------------------------
+PARQUEADERO_TYPES = {Type.ENTRADA_PARQUEADERO, Type.SALIDA_PARQUEADERO}
+ZONA_TYPES = {Type.ENTRADA_ZONA, Type.SALIDA_ZONA}
+
+
 @router.post("", response_model=SensorRead, status_code=status.HTTP_201_CREATED)
 def crear_sensor(body: SensorCreate, session: Session = Depends(get_session)):
-    _assert_fk_exist(session, body.zona_id, body.palanca_id)
-    s = Sensor(**body.model_dump())
-    
-    if body.tipo in (SensorType.ENTRADA_PARQUEADERO, SensorType.SALIDA_PARQUEADERO):
-        if not body.palanca_id:
+    zona_id = body.zona_id
+    palanca_id = body.palanca_id
+
+    if body.tipo in PARQUEADERO_TYPES:
+        if palanca_id is None:
             raise HTTPException(422, "Para tipo de parqueadero debes enviar 'palanca_id'")
-        body.zona_id = None  # normalizamos
-    else:
-    # tipo de zona
-        if not body.zona_id:
+        zona_id = None
+    elif body.tipo in ZONA_TYPES:
+        if zona_id is None:
             raise HTTPException(422, "Para tipo de zona debes enviar 'zona_id'")
+    else:
+        raise HTTPException(422, "Tipo de sensor no soportado")
+
+    _assert_fk_exist(session, zona_id, palanca_id)
+
+    data = body.model_dump()
+    data["zona_id"] = zona_id
+    data["palanca_id"] = palanca_id
+    s = Sensor(**data)
     session.add(s)
     session.commit()
     session.refresh(s)
@@ -47,7 +59,7 @@ def listar_sensores(
     parqueadero_id: Optional[int] = Query(default=None, description="Filtra sensores por parqueadero (vía zona o palanca)"),
     zona_id: Optional[int] = Query(default=None),
     palanca_id: Optional[int] = Query(default=None),
-    tipo: Optional[SensorType] = Query(default=None),
+    tipo: Optional[Type] = Query(default=None),
     activo: Optional[bool] = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),

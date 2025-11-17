@@ -1,9 +1,10 @@
 """Ejecutor de pruebas funcionales con peticiones POST.
 
-Crea un parqueadero, una zona, una palanca, un vehículo y una visita. El
-vehículo queda registrado con los indicadores ``en_lista_negra`` y
-``vehiculo_vip`` para que los otros scripts (GET/PATCH y DELETE) puedan
-validar los nuevos atributos.
+Genera un parqueadero totalmente poblado (palancas, sensores y tres zonas,
+incluyendo una VIP) además de un vehículo y una visita. De esta manera la
+respuesta de ``/parqueaderos/topologia`` queda libre de valores ``null`` y
+los otros scripts (GET/PATCH y DELETE) tienen datos listos para ejercitar los
+endpoints.
 """
 from __future__ import annotations
 
@@ -13,11 +14,13 @@ import random
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import requests
 
 CACHE_FILE = Path(__file__).with_name(".functional_test_cache.json")
+ZONAS_A_CREAR = 3
+VIP_ZONE_INDEX = 0
 
 
 def _rand_suffix(length: int = 5) -> str:
@@ -41,6 +44,20 @@ def _expect_status(resp: requests.Response, expected_status: int) -> Dict[str, A
     return {}
 
 
+def _crear_palanca(session: requests.Session, base_url: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    return _expect_status(
+        session.post(_build_url(base_url, "/palancas"), json=body),
+        201,
+    )
+
+
+def _crear_sensor(session: requests.Session, base_url: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    return _expect_status(
+        session.post(_build_url(base_url, "/sensores"), json=body),
+        201,
+    )
+
+
 def run_post_tests(base_url: str) -> dict[str, Any]:
     session = requests.Session()
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
@@ -57,30 +74,84 @@ def run_post_tests(base_url: str) -> dict[str, Any]:
     )
     print(f"✓ Parqueadero creado con id {parqueadero['id']}")
 
-    print("Creando zona asociada…")
-    zona_body = {
-        "parqueadero_id": parqueadero["id"],
-        "nombre": f"Zona Central {timestamp}",
-        "es_vip": False,
-        "capacidad": 10,
-    }
-    zona = _expect_status(
-        session.post(_build_url(base_url, "/zonas"), json=zona_body),
-        201,
+    print("Creando palancas y sensores del parqueadero…")
+    palanca_entrada = _crear_palanca(
+        session,
+        base_url,
+        {
+            "tipo": "ENTRADA_PARQUEADERO",
+            "parqueadero_id": parqueadero["id"],
+            "abierto": True,
+        },
     )
-    print(f"✓ Zona creada con id {zona['id']}")
+    palanca_salida = _crear_palanca(
+        session,
+        base_url,
+        {
+            "tipo": "SALIDA_PARQUEADERO",
+            "parqueadero_id": parqueadero["id"],
+            "abierto": True,
+        },
+    )
+    sensor_entrada = _crear_sensor(
+        session,
+        base_url,
+        {
+            "tipo": "ENTRADA_PARQUEADERO",
+            "nombre": f"Sensor Entrada Parqueadero {suffix}",
+            "palanca_id": palanca_entrada["id"],
+        },
+    )
+    sensor_salida = _crear_sensor(
+        session,
+        base_url,
+        {
+            "tipo": "SALIDA_PARQUEADERO",
+            "nombre": f"Sensor Salida Parqueadero {suffix}",
+            "palanca_id": palanca_salida["id"],
+        },
+    )
+    print(
+        "✓ Palancas del parqueadero listas (entrada #{pin}, salida #{pout})".format(
+            pin=palanca_entrada["id"], pout=palanca_salida["id"]
+        )
+    )
 
-    print("Creando palanca de entrada de parqueadero…")
-    palanca_body = {
-        "tipo": "ENTRADA_PARQUEADERO",
-        "parqueadero_id": parqueadero["id"],
-        "abierto": True,
-    }
-    palanca = _expect_status(
-        session.post(_build_url(base_url, "/palancas"), json=palanca_body),
-        201,
-    )
-    print(f"✓ Palanca creada con id {palanca['id']}")
+    print("Creando zonas (incluida una VIP) con sus sensores…")
+    zonas_cache: List[Dict[str, Any]] = []
+    for idx in range(ZONAS_A_CREAR):
+        zona_body = {
+            "parqueadero_id": parqueadero["id"],
+            "nombre": f"Zona {idx + 1} {timestamp}",
+            "es_vip": idx == VIP_ZONE_INDEX,
+            "capacidad": 10 + idx * 5,
+        }
+        zona = _expect_status(
+            session.post(_build_url(base_url, "/zonas"), json=zona_body),
+            201,
+        )
+        zona_palanca = _crear_palanca(
+            session,
+            base_url,
+            {
+                "tipo": "ENTRADA_ZONA",
+                "zona_id": zona["id"],
+                "parqueadero_id": parqueadero["id"],
+                "abierto": True,
+            },
+        )
+        zona_sensor = _crear_sensor(
+            session,
+            base_url,
+            {
+                "tipo": "ENTRADA_ZONA",
+                "nombre": f"Sensor Zona {idx + 1} {suffix}",
+                "zona_id": zona["id"],
+                "palanca_id": zona_palanca["id"],
+            },
+        )
+        zonas_cache.append({"zona": zona, "palanca": zona_palanca, "sensor": zona_sensor})
+    print(f"✓ {len(zonas_cache)} zonas creadas")
 
     print("Registrando vehículo…")
     vehiculo_body = {
@@ -109,8 +180,15 @@ def run_post_tests(base_url: str) -> dict[str, Any]:
     payload = {
         "base_url": base_url,
         "parqueadero": parqueadero,
-        "zona": zona,
-        "palanca": palanca,
+        "zonas": zonas_cache,
+        "palancas_parqueadero": {
+            "entrada": palanca_entrada,
+            "salida": palanca_salida,
+        },
+        "sensores_parqueadero": {
+            "entrada": sensor_entrada,
+            "salida": sensor_salida,
+        },
         "vehiculo": vehiculo,
         "visita": visita,
     }
