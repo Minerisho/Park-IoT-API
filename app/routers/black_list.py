@@ -41,61 +41,79 @@ def crear_black(body: BlackListCreate, session: Session = Depends(get_session)):
     )
 
 @router.get("", response_model=list[BlackListRead])
-def listar_black(
-    parqueadero_id: int | None = Query(default=None),
-    placa: str | None = Query(default=None),
-    activos: bool | None = Query(default=None),
+def list_blacklist(
+    id: int | None = Query(
+        None,
+        description="ID de la entrada en la tabla blacklist"
+    ),
+    vehiculo_id: int | None = Query(
+        None,
+        description="ID del vehículo asociado"
+    ),
+    parqueadero_id: int | None = Query(
+        None,
+        description="ID del parqueadero asociado"
+    ),
+        placa: str | None = Query(
+        None,
+        description="Placa del vehículo asociado (ej. ABC123 o ABC-123)",
+    ),
     session: Session = Depends(get_session),
 ):
-    stmt = select(BlackList).order_by(BlackList.id.desc())
+    stmt = select(BlackList)
+
+    if placa is not None:
+        placa_normalizada = placa.strip().upper()
+
+        stmt = (
+            select(BlackList)
+            .join(Vehiculo, BlackList.vehiculo_id == Vehiculo.id)
+            .where(Vehiculo.placa == placa_normalizada)
+        )
+
+    if id is not None:
+        stmt = stmt.where(BlackList.id == id)
+
+    if vehiculo_id is not None:
+        stmt = stmt.where(BlackList.vehiculo_id == vehiculo_id)
+
     if parqueadero_id is not None:
         stmt = stmt.where(BlackList.parqueadero_id == parqueadero_id)
-    if activos is True:
-        stmt = stmt.where(BlackList.activo == True)
-    if activos is False:
-        stmt = stmt.where(BlackList.activo == False)
 
-    filas = session.exec(stmt).all()
-    out: list[BlackListRead] = []
-    for bl in filas:
-        veh = session.get(Vehiculo, bl.vehiculo_id)
-        if placa and veh and veh.placa != placa.strip().upper():
-            continue
-        out.append(BlackListRead(
-            id=bl.id, vehiculo_id=bl.vehiculo_id, parqueadero_id=bl.parqueadero_id,
-            activo=bl.activo, nota=bl.nota, placa=veh.placa if veh else ""
-        ))
-    return out
+    resultados = session.exec(stmt).all()
 
-@router.get("/{bl_id}", response_model=BlackListRead)
-def detalle_black(bl_id: int = Path(ge=1), session: Session = Depends(get_session)):
-    bl = session.get(BlackList, bl_id)
-    if not bl:
-        raise HTTPException(404, "No encontrado")
-    veh = session.get(Vehiculo, bl.vehiculo_id)
-    return BlackListRead(
-        id=bl.id, vehiculo_id=bl.vehiculo_id, parqueadero_id=bl.parqueadero_id,
-        activo=bl.activo, nota=bl.nota, placa=veh.placa if veh else ""
-    )
+    if resultados is None:
+        raise HTTPException(status_code=404, detail="No se encontraron resultados en la blacklist")
+    
+    return resultados
 
-@router.patch("/{bl_id}", response_model=BlackListRead)
-def actualizar_black(
-    bl_id: int = Path(ge=1),
-    patch: BlackListPatch = None,
+
+@router.patch("/{blacklist_id}", response_model=BlackListRead)
+def patch_blacklist(
+    blacklist_id: int,
+    data: BlackListPatch,
     session: Session = Depends(get_session),
 ):
-    bl = session.get(BlackList, bl_id)
-    if not bl:
-        raise HTTPException(404, "No encontrado")
-    data = (patch or BlackListPatch()).model_dump(exclude_unset=True)
-    if "activo" in data: bl.activo = data["activo"]
-    if "nota" in data: bl.nota = data["nota"]
-    session.add(bl); session.commit(); session.refresh(bl)
-    veh = session.get(Vehiculo, bl.vehiculo_id)
-    return BlackListRead(
-        id=bl.id, vehiculo_id=bl.vehiculo_id, parqueadero_id=bl.parqueadero_id,
-        activo=bl.activo, nota=bl.nota, placa=veh.placa if veh else ""
-    )
+    # 1. Buscar la fila a actualizar
+    db_obj = session.get(BlackList, blacklist_id)
+    if db_obj is None:
+        raise HTTPException(status_code=404, detail="BlackList no encontrada")
+
+    # 2. Obtener solo los campos enviados en el PATCH
+    update_data = data.dict(exclude_unset=True)
+    # Nota: si envías {"motivo": null}, aquí vendrá {"motivo": None} y se pondrá a NULL.
+
+    # 3. Aplicar cambios campo por campo
+    for field, value in update_data.items():
+        setattr(db_obj, field, value)
+
+    # 4. Guardar en la BD
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+
+    # 5. Devolver el objeto actualizado (Pydantic usa from_attributes=True)
+    return db_obj
 
 @router.delete("/{bl_id}", response_model=BlackListRead)
 def eliminar_black(bl_id: int = Path(ge=1), session: Session = Depends(get_session)):

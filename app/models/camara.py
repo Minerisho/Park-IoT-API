@@ -7,7 +7,6 @@ class Camara(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(index=True, min_length=1, max_length=100)
-
     
     device_index: Optional[int] = Field(
         default=None, description="Índice de dispositivo (ej. 0 o 1 en OpenCV)"

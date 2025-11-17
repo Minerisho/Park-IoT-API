@@ -1,21 +1,22 @@
 from typing import Optional
 from pydantic import BaseModel
-from ..core.enums import GateType, GateState
+from ..core.enums import GateType
 
 class PalancaCreate(BaseModel):
     tipo: GateType
     parqueadero_id: Optional[int] = None
     zona_id: Optional[int] = None
-    estado: GateState = GateState.CERRADA
+    abierto: bool = True
+    
 
 class PalancaRead(BaseModel):
     id: int
     tipo: GateType
-    estado: GateState
     parqueadero_id: Optional[int]
     zona_id: Optional[int]
     class Config: from_attributes = True
+    abierto: bool
 
 class PalancaSetEstadoBody(BaseModel):
-    estado: GateState
+    abierto: bool
     nota: Optional[str] = None  # solo informativa, no hay eventos

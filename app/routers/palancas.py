@@ -33,7 +33,7 @@ def detalle_palanca(palanca_id: int = Path(ge=1), session: Session = Depends(get
 def set_estado(palanca_id: int, body: PalancaSetEstadoBody, session: Session = Depends(get_session)):
     p = session.get(Palanca, palanca_id)
     if not p: raise HTTPException(404, "Palanca no encontrada")
-    p.estado = body.estado
+    p.abierto = body.abierto
     session.add(p); session.commit(); session.refresh(p)
     return p
 
