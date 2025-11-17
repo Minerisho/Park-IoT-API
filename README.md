@@ -40,7 +40,7 @@ pip install -r requirements.txt
 ## Ejecución en desarrollo
 
 ```bash
-uvicorn app.main:app --reload --workers 1
+uvicorn app.main:app --reload
 ```
 
 * La API quedará en: `http://127.0.0.1:8000`
