@@ -14,8 +14,10 @@ class PalancaRead(BaseModel):
     tipo: GateType
     parqueadero_id: Optional[int]
     zona_id: Optional[int]
-    class Config: from_attributes = True
     abierto: bool
+
+    class Config:
+        from_attributes = True
 
 class PalancaSetEstadoBody(BaseModel):
     abierto: bool

@@ -5,7 +5,7 @@ from sqlalchemy.engine import Engine
 from .config import get_settings
 from .models import (
     Parqueadero, Zona, Palanca, Sensor,
-    Vehiculo, VehiculoVIP, Visita,
+    Vehiculo, Visita,
     LecturaPlaca,
     Incidente
     )# noqa

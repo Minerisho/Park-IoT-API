@@ -1,0 +1,37 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "parqueadero": {
+    "id": 1,
+    "nombre": "Test Parqueadero V9N9S - PATCH",
+    "direccion": "Calle 87 #3"
+  },
+  "zona": {
+    "id": 1,
+    "parqueadero_id": 1,
+    "nombre": "Zona Central 20251117165305 - PATCH",
+    "es_vip": false,
+    "capacidad": 15,
+    "conteo_actual": 0
+  },
+  "palanca": {
+    "id": 1,
+    "tipo": "ENTRADA_PARQUEADERO",
+    "parqueadero_id": 1,
+    "zona_id": null,
+    "abierto": true
+  },
+  "vehiculo": {
+    "id": 1,
+    "placa": "TESTV9N9S",
+    "activo": false,
+    "en_lista_negra": true,
+    "vehiculo_vip": true
+  },
+  "visita": {
+    "id": 1,
+    "vehiculo_id": 1,
+    "parqueadero_id": 1,
+    "ts_entrada": "2025-11-17T11:53:06.133903",
+    "ts_salida": "2025-11-17T16:53:25.297474"
+  }
+}
