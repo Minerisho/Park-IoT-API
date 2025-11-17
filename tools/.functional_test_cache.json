@@ -2,36 +2,132 @@
   "base_url": "http://127.0.0.1:8000",
   "parqueadero": {
     "id": 1,
-    "nombre": "Test Parqueadero V9N9S - PATCH",
-    "direccion": "Calle 87 #3"
+    "nombre": "Test Parqueadero HCJ89 - PATCH",
+    "direccion": "Calle 45 #18"
   },
-  "zona": {
-    "id": 1,
-    "parqueadero_id": 1,
-    "nombre": "Zona Central 20251117165305 - PATCH",
-    "es_vip": false,
-    "capacidad": 15,
-    "conteo_actual": 0
+  "zonas": [
+    {
+      "zona": {
+        "id": 1,
+        "parqueadero_id": 1,
+        "nombre": "Zona 1 20251117174703 - PATCH",
+        "es_vip": true,
+        "capacidad": 15,
+        "conteo_actual": 0
+      },
+      "palanca": {
+        "id": 3,
+        "tipo": "ENTRADA_ZONA",
+        "parqueadero_id": 1,
+        "zona_id": 1,
+        "abierto": true
+      },
+      "sensor": {
+        "id": 3,
+        "tipo": "ENTRADA_ZONA",
+        "nombre": "Sensor Zona 1 HCJ89",
+        "activo": true,
+        "zona_id": 1,
+        "palanca_id": 3
+      }
+    },
+    {
+      "zona": {
+        "id": 2,
+        "parqueadero_id": 1,
+        "nombre": "Zona 2 20251117174703",
+        "es_vip": false,
+        "capacidad": 15,
+        "conteo_actual": 0
+      },
+      "palanca": {
+        "id": 4,
+        "tipo": "ENTRADA_ZONA",
+        "parqueadero_id": 1,
+        "zona_id": 2,
+        "abierto": true
+      },
+      "sensor": {
+        "id": 4,
+        "tipo": "ENTRADA_ZONA",
+        "nombre": "Sensor Zona 2 HCJ89",
+        "activo": true,
+        "zona_id": 2,
+        "palanca_id": 4
+      }
+    },
+    {
+      "zona": {
+        "id": 3,
+        "parqueadero_id": 1,
+        "nombre": "Zona 3 20251117174703",
+        "es_vip": false,
+        "capacidad": 20,
+        "conteo_actual": 0
+      },
+      "palanca": {
+        "id": 5,
+        "tipo": "ENTRADA_ZONA",
+        "parqueadero_id": 1,
+        "zona_id": 3,
+        "abierto": true
+      },
+      "sensor": {
+        "id": 5,
+        "tipo": "ENTRADA_ZONA",
+        "nombre": "Sensor Zona 3 HCJ89",
+        "activo": true,
+        "zona_id": 3,
+        "palanca_id": 5
+      }
+    }
+  ],
+  "palancas_parqueadero": {
+    "entrada": {
+      "id": 1,
+      "tipo": "ENTRADA_PARQUEADERO",
+      "parqueadero_id": 1,
+      "zona_id": null,
+      "abierto": true
+    },
+    "salida": {
+      "id": 2,
+      "tipo": "SALIDA_PARQUEADERO",
+      "parqueadero_id": 1,
+      "zona_id": null,
+      "abierto": true
+    }
   },
-  "palanca": {
-    "id": 1,
-    "tipo": "ENTRADA_PARQUEADERO",
-    "parqueadero_id": 1,
-    "zona_id": null,
-    "abierto": true
+  "sensores_parqueadero": {
+    "entrada": {
+      "id": 1,
+      "tipo": "ENTRADA_PARQUEADERO",
+      "nombre": "Sensor Entrada Parqueadero HCJ89",
+      "activo": true,
+      "zona_id": null,
+      "palanca_id": 1
+    },
+    "salida": {
+      "id": 2,
+      "tipo": "SALIDA_PARQUEADERO",
+      "nombre": "Sensor Salida Parqueadero HCJ89",
+      "activo": true,
+      "zona_id": null,
+      "palanca_id": 2
+    }
   },
   "vehiculo": {
     "id": 1,
-    "placa": "TESTV9N9S",
+    "placa": "TESTHCJ89",
     "activo": false,
     "en_lista_negra": true,
-    "vehiculo_vip": true
+    "vehiculo_vip": false
   },
   "visita": {
     "id": 1,
     "vehiculo_id": 1,
     "parqueadero_id": 1,
-    "ts_entrada": "2025-11-17T11:53:06.133903",
-    "ts_salida": "2025-11-17T16:53:25.297474"
+    "ts_entrada": "2025-11-17T12:47:03.442168",
+    "ts_salida": "2025-11-17T17:47:07.159140"
   }
 }
