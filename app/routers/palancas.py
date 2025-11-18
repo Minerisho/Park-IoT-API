@@ -74,3 +74,12 @@ def set_estado(palanca_id: int, body: PalancaUpdate, session: Session = Depends(
     session.commit()
     session.refresh(p)
     return p
+
+@router.delete("/{palanca_id}", response_model=PalancaRead)
+def eliminar_palanca(palanca_id: int = Path(ge=1), session: Session = Depends(get_session)):
+    p = session.get(Palanca, palanca_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Palanca no encontrada")
+    session.delete(p)
+    session.commit()
+    return p

@@ -104,7 +104,7 @@ def capturar_placeholder(
     cam = _get(session, camara_id) 
 
     recognizer = ColombianPlateRecognizer(
-        output_dir=".../vision/capturas",
+        output_dir="app/vision/capturas",
         min_confidence_ocr=0.7,
         use_gpu=False,
     )
