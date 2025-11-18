@@ -19,6 +19,9 @@ class PalancaRead(BaseModel):
     class Config:
         from_attributes = True
 
-class PalancaSetEstadoBody(BaseModel):
-    abierto: bool
-    nota: Optional[str] = None  # solo informativa, no hay eventos
+class PalancaUpdate(BaseModel):
+    tipo: Type = None
+    parqueadero_id: Optional[int] = None
+    zona_id: Optional[int] = None
+    abierto: bool = True
+    
