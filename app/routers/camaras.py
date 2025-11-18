@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models.camara import Camara
+from ..models.lectura_placa import LecturaPlaca  # <--- [NUEVO IMPORT]
 from ..schemas.camara import CamaraCreate, CamaraUpdate, CamaraRead
 
 from ..vision.plate_recognizer import ColombianPlateRecognizer
@@ -40,7 +41,6 @@ def listar_camaras(
     stmt = select(Camara).order_by(Camara.id.desc())
 
     if q:
-        # Nota: LIKE puede ser case-sensitive según el backend
         stmt = stmt.where(Camara.nombre.contains(q))
 
     if activas is True:
@@ -93,15 +93,18 @@ def eliminar_camara(
 
 # ---------------------- captura ----------------------
 @router.get("/{camara_id}/capturar")
-def capturar_placeholder(
+def capturar_placa(  
     camara_id: int = Path(ge=1),
     session: Session = Depends(get_session)
 ):
     """
-    Captura placa, inserta el index de la cámara, devuelve la la placa en string, confidencia y ruta de la imagen.
-
+    Captura placa, guarda el registro en la base de datos (LecturaPlaca) 
+    y devuelve la información.
     """
     cam = _get(session, camara_id) 
+
+    if cam.device_index is None:
+        raise HTTPException(400, "Esta cámara no tiene un device_index configurado")
 
     recognizer = ColombianPlateRecognizer(
         output_dir="app/vision/capturas",
@@ -109,12 +112,30 @@ def capturar_placeholder(
         use_gpu=False,
     )
 
+    # confidencia viene en escala 0-100 
     placa, confidencia, img_ruta = recognizer.capture_and_read_plate(cam.device_index)
 
-    return {
-        "camara_id": camara_id,
-        "placa": placa,
-        "confidencia": confidencia,
-        "imagen_ruta": img_ruta,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    if placa:
+        # El modelo LecturaPlaca espera confianza entre 0.0 y 1.0
+        # El recognizer devuelve porcentaje (0-100), así que dividimos por 100.
+        confianza_normalizada = confidencia / 100.0
+        
+        nueva_lectura = LecturaPlaca(
+            camara_id=cam.id,
+            placa_detectada=placa,
+            confianza=confianza_normalizada,
+            imagen_path=img_ruta,
+        )
+        session.add(nueva_lectura)
+        session.commit()
+        session.refresh(nueva_lectura)
+
+        return nueva_lectura
+    else:
+        # Si no se detecta placa, devolvemos un mensaje informativo pero no guardamos en BD
+        # (El modelo requiere min_length=4 para la placa, fallaría si guardamos null)
+        return {
+            "camara_id": camara_id,
+            "mensaje": "No se detectó ninguna placa válida",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
