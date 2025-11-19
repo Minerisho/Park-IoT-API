@@ -50,13 +50,8 @@ logs/
 *.db
 
 # ── Archivos generados por la app (capturas, uploads, etc.)
-data/
-!data/.gitkeep
-storage/
-!storage/.gitkeep
-uploads/
-!uploads/.gitkeep
-
+*png
+*jpg
 # ── Alembic (mantén migraciones, ignora bytecode)
 alembic/versions/__pycache__/
 

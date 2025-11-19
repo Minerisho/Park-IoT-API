@@ -1,23 +1,18 @@
 # usar_camara.py
-from plate_recognizer import ColombianPlateRecognizer
+from plate_recognizer import LectorPlacas
 
 
 def main() -> None:
-    recognizer = ColombianPlateRecognizer(
-        output_dir="plates_output",
-        min_confidence_ocr=0.4,
-        use_gpu=False,  # pon True si tienes GPU con CUDA y EasyOCR configurado
+    lector = LectorPlacas(
+        guardar_img=True, 
+        nivel_procesamiento=0.2 
     )
-
-    camera_index = 0  # Cambia este valor si usas otra cámara
-    plate, confidence, image_path = recognizer.capture_and_read_plate(camera_index)
-
-    if plate is None:
-        print("No se detectó una placa colombiana válida (ABC-123).")
-    else:
-        print(f"Placa: {plate}")
-        print(f"Confianza: {confidence:.2f}%")
-        print(f"Imagen procesada guardada en: {image_path}")
+    
+    placa, conf, ruta_full, ruta_rec = lector.capturar_placa(0)
+    
+    print(f"\n>>> PLACA: {placa}")
+    print(f">>> CONFIANZA: {conf:.2f}")
+    print(f">>> Imagen guardada en: {ruta_full}")
 
 
 if __name__ == "__main__":
