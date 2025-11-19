@@ -1,8 +1,6 @@
 # Park-IoT API (FastAPI)
 
-API de prototipo para gestión de parqueaderos: **parqueaderos, zonas, sensores, palancas, visitas** y un endpoint runtime para **capturar foto y leer placa** con OpenCV/ALPR desde cámaras locales o IP.
-
-ESTA API NO ESTÁ TERMINADA AÚN, PERO SU FUNCIONALIDAD CORE Y ENDPOINTS FUNCIONAN.
+API de prototipo para gestión de parqueaderos: **parqueaderos, zonas, sensores, palancas, visitas** y un endpoint para **capturar foto y leer placa** con OpenCV/OCR desde cámaras locales.
 
 ## Stack
 - Python 3.11+ (recomendado 3.12)
@@ -14,14 +12,10 @@ ESTA API NO ESTÁ TERMINADA AÚN, PERO SU FUNCIONALIDAD CORE Y ENDPOINTS FUNCION
 - Python 3.11+ instalado
 - (Windows, si usas webcam USB) Drivers OK y permisos para acceder a la cámara
 
-## Recomendaciones
-Para que no haya retraso de respuesta al usar el endpoint de cámara, se recomienda ejecutar vision/test.py 1 vez para que se instale el modelo. Ya después irá rápido. La IA de reconocimiento de placas aún no está afinada.
-
-
 ## Instalación rápida
 ```bash
-git clone <URL_DEL_REPO>
-cd Back
+git clone https://github.com/Minerisho/Park-IoT-API
+cd Park-IoT-API
 
 # Crear entorno
 python -m venv .venv
@@ -40,7 +34,7 @@ pip install -r requirements.txt
 ## Ejecución en desarrollo
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app
 ```
 
 * La API quedará en: `http://127.0.0.1:8000`
@@ -49,6 +43,6 @@ uvicorn app.main:app --reload
 
 * **Swagger UI (auto)**: `http://127.0.0.1:8000/docs`
 * **ReDoc (auto)**: `http://127.0.0.1:8000/redoc`
-* **Doc pública (producción)**: pendiente por subir
+
 
 

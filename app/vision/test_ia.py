@@ -1,5 +1,5 @@
 # usar_camara.py
-from plate_recognizer import LectorPlacas
+from lector_placas import LectorPlacas
 
 
 def main() -> None:
