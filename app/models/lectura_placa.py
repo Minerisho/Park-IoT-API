@@ -13,7 +13,7 @@ class LecturaPlaca(SQLModel, table=True):
 
     placa_detectada: str = Field(min_length=4, max_length=12)
     confianza: float = Field(ge=0.0, le=1.0)
-    imagen_path: Optional[str] = Field(default=None, max_length=255)
-
+    ruta_imagen: Optional[str] = Field(default=None, max_length=255)
+    ruta_recorte: Optional[str] = Field(default=None, max_length=255)
     ts: datetime = Field(default_factory=datetime.now)
 

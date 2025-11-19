@@ -154,7 +154,7 @@ def main():
     # Cámara 1: Entrada
     c1_data = {
         "nombre": "Cámara Principal Entrada",
-        "device_index": 1,
+        "device_index": 0,
         "ubicacion": "entrada",
         "activo": True
     }
@@ -164,7 +164,7 @@ def main():
     # Cámara 2: Salida
     c2_data = {
         "nombre": "Cámara Principal Salida",
-        "device_index": 2,
+        "device_index": 1,
         "ubicacion": "salida",
         "activo": True
     }

@@ -5,11 +5,21 @@ from .config import get_settings, Settings
 from .routers import parqueadero, zonas, palancas, sensores, visitas, camaras, vehiculos
 from .db import create_db_and_tables
 from contextlib import asynccontextmanager
+from app.vision.lector_placas import LectorPlacas
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()   # *** Inicialización de la BD ***
+    print("Cargando modelo de IA...")
+    app.state.lector = LectorPlacas(
+        guardar_img=True,
+        nivel_procesamiento=0.4,
+        use_gpu=False, 
+        model_path="app/vision/modelo/license_plate_detector.pt"
+    )
+    print("Modelo de Detección de Placas cargado en memoria (GPU/CPU).")
     yield
+    print("Liberando recursos de IA...")
 
 def create_app() -> FastAPI:
     cfg = get_settings()

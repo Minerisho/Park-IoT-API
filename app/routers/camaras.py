@@ -2,15 +2,13 @@
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Request
 from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models.camara import Camara
 from ..models.lectura_placa import LecturaPlaca  # <--- [NUEVO IMPORT]
 from ..schemas.camara import CamaraCreate, CamaraUpdate, CamaraRead
-
-from ..vision.plate_recognizer import ColombianPlateRecognizer
 
 router = APIRouter(prefix="/camaras", tags=["camaras"])
 
@@ -92,50 +90,75 @@ def eliminar_camara(
 
 
 # ---------------------- captura ----------------------
-@router.get("/{camara_id}/capturar")
-def capturar_placa(  
-    camara_id: int = Path(ge=1),
-    session: Session = Depends(get_session)
+@router.post("/{id_camara}/capturar")
+async def capturar_placa_camara(
+    id_camara: int, 
+    request: Request,                   # Necesario para acceder a la IA cargada en memoria
+    session: Session = Depends(get_session) # Necesario para guardar en la BD
 ):
     """
-    Captura placa, guarda el registro en la base de datos (LecturaPlaca) 
-    y devuelve la información.
+    Captura foto, detecta placa con IA, guarda el resultado en la BD y devuelve el resultado.
     """
-    cam = _get(session, camara_id) 
-
-    if cam.device_index is None:
-        raise HTTPException(400, "Esta cámara no tiene un device_index configurado")
-
-    recognizer = ColombianPlateRecognizer(
-        output_dir="app/vision/capturas",
-        min_confidence_ocr=0.7,
-        use_gpu=False,
+    print(f"Buscando cámara con id [{id_camara}] ...")
+    c = _get(session, id_camara)
+    lector = request.app.state.lector
+    texto_placa, confianza, ruta_full, ruta_rec = lector.capturar_placa(c.device_index)
+    
+    if texto_placa == "ERR_CAM":
+        raise HTTPException(status_code=500, detail=f"No se pudo conectar a la cámara {id_camara}")
+    elif texto_placa == "ERR_FRAME":
+        raise HTTPException(status_code=500, detail="La cámara no devolvió imagen")
+    elif texto_placa == "NO DETECTADO":
+        lectura_mala = LecturaPlaca(
+        camara_id=id_camara,
+        placa_detectada=texto_placa,
+        ts=datetime.now(),
+        confianza=confianza,
+        ruta_imagen=ruta_full,        
+        ruta_recorte=ruta_rec         
     )
-
-    # confidencia viene en escala 0-100 
-    placa, confidencia, img_ruta = recognizer.capture_and_read_plate(cam.device_index)
-
-    if placa:
-        # El modelo LecturaPlaca espera confianza entre 0.0 y 1.0
-        # El recognizer devuelve porcentaje (0-100), así que dividimos por 100.
-        confianza_normalizada = confidencia / 100.0
-        
-        nueva_lectura = LecturaPlaca(
-            camara_id=cam.id,
-            placa_detectada=placa,
-            confianza=confianza_normalizada,
-            imagen_path=img_ruta,
-        )
-        session.add(nueva_lectura)
+    
+        session.add(lectura_mala)
         session.commit()
-        session.refresh(nueva_lectura)
+        session.refresh(lectura_mala)
+        raise HTTPException(status_code=500, detail="No se detectó una placa en la imagen o la placa detectada no contenía texto") 
 
-        return nueva_lectura
-    else:
-        # Si no se detecta placa, devolvemos un mensaje informativo pero no guardamos en BD
-        # (El modelo requiere min_length=4 para la placa, fallaría si guardamos null)
-        return {
-            "camara_id": camara_id,
-            "mensaje": "No se detectó ninguna placa válida",
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+    nueva_lectura = LecturaPlaca(
+        camara_id=id_camara,
+        placa_detectada=texto_placa,
+        ts=datetime.now(),
+        confianza=confianza,
+        ruta_imagen=ruta_full,        # Guardamos la ruta de la foto completa
+        ruta_recorte=ruta_rec         # Guardamos la ruta del recorte (opcional)
+    )
+    
+    session.add(nueva_lectura)
+    session.commit()
+    session.refresh(nueva_lectura)
+    
+    # 5. Responder al cliente
+    return texto_placa
+
+#-----------    GET de LecturaPlaca     -----------
+
+@router.get("/lecturas", response_model=List[LecturaPlaca])
+async def obtener_historial_lecturas(
+    session: Session = Depends(get_session),
+    camara_id: Optional[int] = None,  # Filtro opcional por cámara
+    offset: int = 0,                  # Paginación: saltar X registros
+    limit: int = Query(default=50, le=100) # Paginación: límite por página (max 100)
+):
+    """
+    Obtiene el historial de placas leídas. 
+    Se puede filtrar por cámara y usar paginación.
+    Ordenado por fecha descendente (más reciente primero).
+    """
+
+    query = select(LecturaPlaca)
+    if camara_id:
+        query = query.where(LecturaPlaca.camara_id == camara_id)
+    query = query.order_by(LecturaPlaca.ts.desc()) 
+    query = query.offset(offset).limit(limit)
+    lecturas = session.exec(query).all()
+    
+    return lecturas
